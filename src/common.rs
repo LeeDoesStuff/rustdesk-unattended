@@ -122,6 +122,7 @@ impl Drop for SimpleCallOnReturn {
 }
 
 pub fn global_init() -> bool {
+    burgertop_brand_init();
     #[cfg(all(target_os = "linux", feature = "drm"))]
     crate::platform::linux::dispatch_wayland_display_probe();
     #[cfg(target_os = "linux")]
@@ -131,6 +132,11 @@ pub fn global_init() -> bool {
         }
     }
     true
+}
+
+fn burgertop_brand_init() {
+    *config::APP_NAME.write().unwrap() = "BurgerTop".to_owned();
+    *config::ORG.write().unwrap() = "com.burgertop".to_owned();
 }
 
 pub fn global_clean() {}
