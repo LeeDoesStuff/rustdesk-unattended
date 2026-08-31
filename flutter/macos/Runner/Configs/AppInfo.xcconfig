@@ -5,10 +5,15 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = RustDesk
+PRODUCT_NAME = BurgerTop
+
+// Keep the Swift module name as "RustDesk" so MainMenu.xib and the compiled
+// AppDelegate / MainFlutterWindow references (customModule="RustDesk") still
+// resolve. Only the user-visible .app name / bundle id changes.
+PRODUCT_MODULE_NAME = RustDesk
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.carriez.flutterHbb
+PRODUCT_BUNDLE_IDENTIFIER = com.burgertop.app
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 Purslane Tech Pte. Ltd. All rights reserved.
+PRODUCT_COPYRIGHT = BurgerTop is a fork of RustDesk. Original RustDesk copyright © 2026 Purslane Tech Pte. Ltd.

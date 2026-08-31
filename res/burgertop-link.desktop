@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=BurgerTop
+NoDisplay=true
+MimeType=x-scheme-handler/burgertop;
+TryExec=burgertop
+Exec=burgertop %u
+Icon=burgertop
+Terminal=false
+Type=Application
+StartupNotify=false
+StartupWMClass=burgertop

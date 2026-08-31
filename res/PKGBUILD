@@ -1,10 +1,10 @@
-pkgname=rustdesk
+pkgname=burgertop
 pkgver=1.4.9
 pkgrel=0
 epoch=
-pkgdesc=""
+pkgdesc="BurgerTop remote desktop (fork of RustDesk)"
 arch=('x86_64')
-url=""
+url="https://github.com/LeeDoesStuff/BurgerTop"
 license=('AGPL-3.0')
 groups=()
 depends=('gtk3' 'xdotool' 'libxcb' 'libxfixes' 'alsa-lib' 'libva' 'libappindicator-gtk3' 'gst-plugins-base' 'gst-plugin-pipewire')
@@ -23,13 +23,14 @@ md5sums=() #generate with 'makepkg -g'
 
 package() {
   if [[ ${FLUTTER} ]]; then
-	  mkdir -p "${pkgdir}/usr/share/rustdesk" && cp -r ${HBB}/flutter/build/linux/x64/release/bundle/* -t "${pkgdir}/usr/share/rustdesk"
+	  mkdir -p "${pkgdir}/usr/share/burgertop" && cp -r ${HBB}/flutter/build/linux/x64/release/bundle/* -t "${pkgdir}/usr/share/burgertop"
   fi
   mkdir -p "${pkgdir}/usr/bin"
-  pushd ${pkgdir} && ln -s /usr/share/rustdesk/rustdesk usr/bin/rustdesk && popd
-  install -Dm 644 $HBB/res/rustdesk.service -t "${pkgdir}/usr/share/rustdesk/files"
-  install -Dm 644 $HBB/res/rustdesk.desktop -t "${pkgdir}/usr/share/rustdesk/files"
-  install -Dm 644 $HBB/res/rustdesk-link.desktop -t "${pkgdir}/usr/share/rustdesk/files"
-  install -Dm 644 $HBB/res/128x128@2x.png "${pkgdir}/usr/share/icons/hicolor/256x256/apps/rustdesk.png"
-  install -Dm 644 $HBB/res/scalable.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/rustdesk.svg"
+  # Cargo emits target/release/rustdesk; install layout uses burgertop.
+  pushd ${pkgdir} && ln -s /usr/share/burgertop/rustdesk usr/bin/burgertop && popd
+  install -Dm 644 $HBB/res/burgertop.service -t "${pkgdir}/usr/share/burgertop/files"
+  install -Dm 644 $HBB/res/burgertop.desktop -t "${pkgdir}/usr/share/burgertop/files"
+  install -Dm 644 $HBB/res/burgertop-link.desktop -t "${pkgdir}/usr/share/burgertop/files"
+  install -Dm 644 $HBB/res/128x128@2x.png "${pkgdir}/usr/share/icons/hicolor/256x256/apps/burgertop.png"
+  install -Dm 644 $HBB/res/scalable.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/burgertop.svg"
 }
