@@ -1,7 +1,9 @@
 <p align="center">
   <img src="res/logo-header.svg" alt="BurgerTop - Your remote desktop"><br>
+  <a href="#whats-different-from-rustdesk">What's different</a> •
   <a href="#raw-steps-to-build">Build</a> •
   <a href="#how-to-build-with-docker">Docker</a> •
+  <a href="#packaging">Packaging</a> •
   <a href="#file-structure">Structure</a>
 </p>
 
@@ -12,6 +14,22 @@
 Yet another remote desktop solution, written in Rust. Works out of the box with no configuration required. You have full control of your data, with no concerns about security.
 
 BurgerTop is a customized fork of [RustDesk](https://github.com/rustdesk/rustdesk). Upstream contributions and issues that are not BurgerTop-specific belong there. Credit for the underlying protocol, capture pipeline, and UI framework goes to the RustDesk authors.
+
+## What's different from RustDesk
+
+BurgerTop is a rebrand + coexistence fork; the underlying remote-desktop code is upstream RustDesk. The intentional deltas:
+
+- **Identity.** The running app announces itself as **BurgerTop** (`APP_NAME` / `ORG` are overridden in `common::global_init()`, so every downstream config path, IPC socket, log directory, and tmp dir picks up the new name without forking `hbb_common`). User-visible strings in `src/lang/en.rs` that were self-references to RustDesk are now BurgerTop; references to external RustDesk products (the public rendezvous network, RustDesk Server Pro) are left factual.
+- **Icon.** New flat burger source at `res/logo.svg`, with regenerated `res/icon.{png,ico}`, size PNGs, macOS icon, Windows Flutter runner `.ico`, and monochrome tray silhouettes for `mac-tray-{light,dark}-x2.png`. `res/logo-header.svg` carries the BurgerTop wordmark.
+- **Palette.** `MyTheme` in `flutter/lib/common.dart` uses a Modern-BK-adjacent scheme: deep red `#B4141B` primary, mustard `#F5B316` accent, warm cream `#F5EBDC` surface. The two `Colors.blue` slots in `ColorScheme.primary` that were meant to carry brand color now route through the accent.
+- **Packaging identity (Linux).** `res/burgertop.desktop`, `res/burgertop-link.desktop`, `res/burgertop.service`, `res/rpm.spec`, and `res/PKGBUILD` install under `/usr/share/burgertop`, ship a `/usr/bin/burgertop` symlink, and register a `burgertop.service` systemd unit — so the packages coexist with a stock RustDesk install on the same machine.
+- **Packaging identity (macOS / Windows / Android).** macOS `PRODUCT_NAME=BurgerTop`, bundle id `com.burgertop.app`, both `burgertop://` and `rustdesk://` schemes registered; the Swift `PRODUCT_MODULE_NAME` stays `RustDesk` so `MainMenu.xib` still links. Windows `Runner.rc` carries BurgerTop company / product / description strings. Android `android:label` is BurgerTop, accessibility service label is `BurgerTop Input`.
+
+What is **not** changed and is unlikely to change without a reason:
+- The Cargo crate name (`rustdesk`) and Rust lib name (`librustdesk`). Renaming them touches ~15 files (CMake, Xcode projects, GitHub workflows, C++ / Kotlin entry points) for zero user-visible benefit — the on-disk binary is still `rustdesk`, the visible app is BurgerTop.
+- The Kotlin package `com.carriez.flutter_hbb` (renaming moves ~40 files).
+- `libs/hbb_common` — kept as an upstream submodule; the runtime `APP_NAME` override sidesteps needing to fork it.
+- `build.py`, the MSI package, `libdrmtap` install path, and the alternate rpm specs (Fedora / Flutter / SUSE variants). These still emit the upstream layout — the rebranded Linux packaging above targets the plain `rpm.spec`, `PKGBUILD`, and DEBIAN paths. Cutting a signed installer needs its own pass.
 
 ## Dependencies
 
@@ -131,9 +149,21 @@ target/release/rustdesk
 
 The binary is still named `rustdesk` at the Cargo level to keep the fork diff small; the running app identifies itself as BurgerTop at startup. Run these commands from the root of the BurgerTop repository so the app finds its resources. Other cargo subcommands such as `install` or `run` are not supported via the Docker method — they would install or run the program inside the container instead of on the host.
 
+## Packaging
+
+The Linux packaging templates in `res/` produce a `burgertop` package that installs alongside a stock RustDesk install (different install prefix, service name, and desktop entry).
+
+- **Debian / Ubuntu (`.deb`).** Layout comes from `res/DEBIAN/{preinst,postinst,prerm,postrm}` plus the manifests in `res/`. Installs to `/usr/share/burgertop/`, drops `/usr/bin/burgertop` as a symlink to the shipped binary, and enables `burgertop.service` under systemd. Purge cleans `~/.config/BurgerTop`.
+- **RHEL / Fedora (`.rpm`).** See `res/rpm.spec`. Same install layout; `%post` copies the desktop entries into `/usr/share/applications/` and enables the systemd unit.
+- **Arch (`PKGBUILD`).** See `res/PKGBUILD`. Same idea via `makepkg`.
+
+The Cargo binary itself is still emitted at `target/release/rustdesk` (crate name unchanged); the packaging step renames or symlinks it to `burgertop` at install time.
+
+The upstream orchestration in `build.py` and the MSI files under `res/msi/` still target the RustDesk layout — cutting a rebranded Windows installer, a signed macOS `.app`, or a Flutter Linux build is a separate pass. The `rpm-flutter.spec`, `rpm-flutter-suse.spec`, and `rpm-suse.spec` variants of the RPM spec are not rebranded yet either; use plain `rpm.spec` for now.
+
 ## File Structure
 
-- **libs/hbb_common** — video codec, config, TCP/UDP wrapper, protobuf, filesystem helpers for file transfer, and other shared utilities (upstream submodule)
+- **libs/hbb_common** — video codec, config, TCP/UDP wrapper, protobuf, filesystem helpers for file transfer, and other shared utilities (upstream submodule, unmodified)
 - **libs/scrap** — screen capture
 - **libs/enigo** — platform-specific keyboard/mouse control
 - **libs/clipboard** — file copy and paste implementation for Windows, Linux, macOS
@@ -142,7 +172,10 @@ The binary is still named `rustdesk` at the Cargo level to keep the fork diff sm
 - **src/client.rs** — start a peer connection
 - **src/rendezvous_mediator.rs** — communicates with a rendezvous/relay server, waits for a direct (TCP hole-punched) or relayed connection
 - **src/platform** — platform-specific code
+- **src/common.rs** — `global_init()` here writes the `APP_NAME` / `ORG` override that gives BurgerTop its runtime identity
 - **flutter** — Flutter code for desktop and mobile
+- **flutter/lib/common.dart** — `MyTheme` (the BurgerTop palette lives here)
+- **res** — icon source (`logo.svg`), rasterized icons, Linux/macOS/Windows packaging manifests
 
 ## License
 
