@@ -122,6 +122,7 @@ impl Drop for SimpleCallOnReturn {
 }
 
 pub fn global_init() -> bool {
+    brand_init();
     #[cfg(all(target_os = "linux", feature = "drm"))]
     crate::platform::linux::dispatch_wayland_display_probe();
     #[cfg(target_os = "linux")]
@@ -131,6 +132,15 @@ pub fn global_init() -> bool {
         }
     }
     true
+}
+
+// BurgerTop identity. Config dir, IPC names, service name, install dir and every `{$appName}`
+// string derive from APP_NAME, so this one override rebrands the runtime without forking
+// hbb_common. It also turns `is_custom_client()` on, which is what an unattended build wants.
+// Idempotent; called from both entry paths so nothing reads the name before it is set.
+fn brand_init() {
+    *config::APP_NAME.write().unwrap() = "BurgerTop".to_owned();
+    *config::ORG.write().unwrap() = "com.burgertop".to_owned();
 }
 
 pub fn global_clean() {}
@@ -220,6 +230,61 @@ pub fn need_fs_cm_send_files() -> bool {
     {
         false
     }
+}
+
+/// Android is scoped-storage only: the peer may never touch anything outside the app
+/// workspace (`Config::get_home()`, i.e. the app-specific external files directory).
+///
+/// Every peer supplied path must be validated with this before it reaches the
+/// filesystem, for reads, writes, renames, creations and deletions alike. The path is
+/// resolved to its canonical form (of the deepest existing ancestor, so paths that are
+/// about to be created are handled too) so symlinks cannot escape the workspace.
+///
+/// Only the `ReadDir` protocol action treats an empty path as the home directory.
+/// Callers must opt in to that protocol-specific behavior with `allow_empty`.
+#[cfg(target_os = "android")]
+pub fn is_peer_path_allowed(path: &str, allow_empty: bool) -> bool {
+    use std::path::{Component, Path, PathBuf};
+
+    // Canonicalize the deepest existing ancestor and re-append the missing tail.
+    fn resolve(path: &Path) -> Option<PathBuf> {
+        let mut tail: Vec<std::ffi::OsString> = Vec::new();
+        let mut base = path.to_path_buf();
+        loop {
+            if let Ok(mut resolved) = base.canonicalize() {
+                while let Some(component) = tail.pop() {
+                    resolved.push(component);
+                }
+                return Some(resolved);
+            }
+            tail.push(base.file_name()?.to_os_string());
+            if !base.pop() {
+                return None;
+            }
+        }
+    }
+
+    if path.is_empty() {
+        return allow_empty;
+    }
+    let path = Path::new(path);
+    // `..` is never needed by the protocol and would defeat the prefix check below.
+    if !path.is_absolute() || path.components().any(|c| c == Component::ParentDir) {
+        return false;
+    }
+    let home = Config::get_home();
+    let home = home.canonicalize().unwrap_or(home);
+    if home.as_os_str().is_empty() {
+        return false;
+    }
+    // `Path::starts_with` compares whole components, and is true for equal paths.
+    resolve(path).map_or(false, |target| target.starts_with(&home))
+}
+
+#[inline]
+#[cfg(not(target_os = "android"))]
+pub fn is_peer_path_allowed(_path: &str, _allow_empty: bool) -> bool {
+    true
 }
 
 #[inline]
@@ -2192,6 +2257,7 @@ fn apply_build_defaults() {
 }
 
 pub fn load_custom_client() {
+    brand_init();
     apply_build_defaults();
 
     #[cfg(debug_assertions)]
