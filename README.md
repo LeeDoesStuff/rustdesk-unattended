@@ -2,7 +2,7 @@
 
 BurgerTop is a customized build of [RustDesk](https://github.com/rustdesk/rustdesk), the open-source remote desktop written in Rust. It exists to produce one thing: a client that is pre-configured for our own rendezvous/relay server, identifies itself as BurgerTop, and installs for unattended access with no setup on the target machine.
 
-Everything else, the protocol, screen capture, codecs and the Flutter UI, is upstream RustDesk and is tracked unchanged. Bugs and feature requests that are not specific to this build belong in the upstream tracker.
+Everything else, including the protocol, screen capture and codecs, is upstream RustDesk and is tracked unchanged. Bugs and feature requests that are not specific to this build belong in the upstream tracker.
 
 ## What this build changes
 
@@ -14,6 +14,7 @@ The customizations are deliberately small so upstream merges stay cheap.
 | Rendezvous server, relay server and the server public key are baked in; the API server is left blank. | `apply_build_defaults()` in `src/common.rs` |
 | Incoming sessions use password approval with the permanent password only, at full access. The permanent password is preset (salted hash plus salt) and cannot be changed from the UI. | `apply_build_defaults()` in `src/common.rs` |
 | The connection-manager window is hidden for incoming sessions. | `hide_cm` handling in `src/ipc.rs` |
+| Windows releases use a command-line service instead of Flutter. Starting it automatically enables incoming connections, keeps the server running in the background, and prints `Ready` only after the configured server and key are confirmed. | `src/cli.rs`, the `cli` Cargo feature and `build.py --cli` |
 | The Windows driver payload (virtual display driver, remote printer driver and adapter) is downloaded, checksum-verified and bundled by `build.py` itself, so local builds and CI produce the same installer. | `stage_windows_drivers()` in `build.py` |
 | The remote printer is installed by default. It can still be turned off in the installer, with `printer=0` on a silent install, or with `INSTALLPRINTER=0` on the MSI. | `flutter/lib/desktop/pages/install_page.dart`, `src/platform/windows.rs`, `res/msi/Package/Fragments/ShortcutProperties.wxs` |
 | Windows release assets are named `BurgerTop-<version>-<arch>.exe` (self-extracting portable installer) and `.msi`; the MSI is built with product name BurgerTop. Release workflows request `contents: write` so this fork can publish its own releases. | `.github/workflows/flutter-build.yml`, `flutter-nightly.yml`, `flutter-tag.yml` |
@@ -27,20 +28,20 @@ To point the build at a different server or password, edit `apply_build_defaults
 ### GitHub Actions (the normal way)
 
 1. On the fork, open the **Actions** tab and enable workflows if GitHub is still asking.
-2. Run **Flutter Nightly Build** with *Run workflow*. It publishes a `nightly` pre-release containing `BurgerTop-<version>-x86_64.exe` (self-extracting portable installer), `BurgerTop-<version>-x86_64.msi`, plus the unsigned `burgertop-unsigned-windows-x86_64` artifact, which is the raw program folder. Pushing a tag such as `1.4.9-1` produces the same through **Flutter Tag Build**.
+2. Run **Flutter Nightly Build** with *Run workflow*. The workflow retains its upstream name, but its Windows job builds the CLI. It publishes a `nightly` pre-release containing `BurgerTop-<version>-x86_64.exe` (self-extracting portable installer), `BurgerTop-<version>-x86_64.msi`, plus the unsigned `burgertop-unsigned-windows-x86_64` artifact, which is the raw program folder. Pushing a tag such as `1.4.9-1` produces the same through **Flutter Tag Build**.
 3. Scheduled (cron) runs never fire on forks; use *Run workflow* or a tag.
 
 Binaries are unsigned unless the signing secrets are configured, so expect a SmartScreen prompt on first run.
 
 ### Locally on Windows
 
-Toolchain versions are pinned in `.github/workflows/flutter-build.yml` (Rust, Flutter, LLVM, vcpkg commit). In short: Rust 1.75, Flutter 3.24.5, LLVM 15, Python 3, and vcpkg with `libvpx libyuv opus aom` for the `x64-windows-static` triplet, with `VCPKG_ROOT` set.
+Toolchain versions are pinned in `.github/workflows/flutter-build.yml`. The Windows CLI build uses Rust 1.75, LLVM 15, Python 3, and vcpkg with `libvpx libyuv opus aom` for the `x64-windows-static` triplet, with `VCPKG_ROOT` set.
 
 ```
-python3 build.py --portable --flutter --hwcodec --vram
+python3 build.py --portable --cli --hwcodec --vram
 ```
 
-The result is `rustdesk-<version>-install.exe` in the repository root (the local packer keeps the upstream file name; the app inside is BurgerTop). `--skip-drivers` builds without the driver payload (offline development only). `python3 build.py --stage-drivers DIR` fetches only the driver payload into `DIR`, which is also a quick way to check that the pinned downloads still resolve.
+The result is `BurgerTop-<version>-<arch>.exe` in the repository root. `--skip-drivers` builds without the driver payload (offline development only). `python3 build.py --stage-drivers DIR` fetches only the driver payload into `DIR`, which is also a quick way to check that the pinned downloads still resolve.
 
 ### Other platforms
 
@@ -58,7 +59,7 @@ Why this used to break: `build.py` never fetched any of it. Only the upstream re
 
 ## Installing on a target machine
 
-- Portable: run `BurgerTop-<version>-x86_64.exe`. It unpacks to `%LOCALAPPDATA%\rustdesk` and runs from there; click **Install** to install permanently. The remote printer option is on by default.
+- Portable: run `BurgerTop-<version>-x86_64.exe`. It unpacks to `%LOCALAPPDATA%\rustdesk`, starts the incoming-connection service, and reports its state in the console. Run `burgertop.exe --status` to query an installed service.
 - Silent: `BurgerTop-<version>-x86_64.exe --silent-install` (append `printer=0` to skip the printer). MSI: `msiexec /i BurgerTop-<version>-x86_64.msi /qn` (`INSTALLPRINTER=0` to skip).
 - After installation the `BurgerTop` service starts, registers with the configured rendezvous server, and accepts sessions with the preset permanent password.
 

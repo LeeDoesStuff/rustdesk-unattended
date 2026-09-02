@@ -187,6 +187,8 @@ def make_parser():
              'Available: [Not used for now]. Special value is "ALL" and empty "". Default is empty.')
     parser.add_argument('--flutter', action='store_true',
                         help='Build flutter package', default=False)
+    parser.add_argument('--cli', action='store_true',
+                        help='Build the background command-line client', default=False)
     parser.add_argument(
         '--hwcodec',
         action='store_true',
@@ -394,13 +396,17 @@ def linux_packaging_branch():
 
 
 def get_features(args):
-    features = ['inline'] if not args.flutter else []
+    if args.cli and args.flutter:
+        raise Exception('--cli and --flutter cannot be used together')
+    features = ['inline'] if not args.flutter and not args.cli else []
     if args.hwcodec:
         features.append('hwcodec')
     if args.vram:
         features.append('vram')
     if args.flutter:
         features.append('flutter')
+    if args.cli:
+        features.append('cli')
     if args.unix_file_copy_paste:
         features.append('unix-file-copy-paste')
     if args.drm:
@@ -1070,7 +1076,7 @@ def main():
     version = get_version()
     features = ','.join(get_features(args))
     flutter = args.flutter
-    if not flutter:
+    if not flutter and not args.cli:
         system2('python3 res/inline-sciter.py')
     print(args.skip_cargo)
     if args.skip_cargo:
@@ -1090,6 +1096,27 @@ def main():
 
         if flutter:
             build_flutter_windows(version, features, args.skip_portable_pack, args.skip_drivers)
+            return
+        if args.cli:
+            system2('cargo build --locked --release --features ' + features)
+            output_dir = os.path.join('build', 'cli', 'windows', 'Release')
+            os.makedirs(output_dir, exist_ok=True)
+            shutil.copy2(exe_path, os.path.join(output_dir, 'burgertop.exe'))
+            virtual_display_dll = os.path.join('target', 'release', 'dylib_virtual_display.dll')
+            if os.path.isfile(virtual_display_dll):
+                shutil.copy2(virtual_display_dll, output_dir)
+            if not args.skip_drivers:
+                stage_windows_drivers(output_dir)
+            if args.skip_portable_pack:
+                return
+            os.chdir('libs/portable')
+            system2('pip3 install -r requirements.txt')
+            system2(
+                'python3 ./generate.py -f ../../build/cli/windows/Release '
+                '-o . -e ../../build/cli/windows/Release/burgertop.exe')
+            system2(
+                f'mv ./target/release/rustdesk-portable-packer.exe '
+                f'../../BurgerTop-{version}-{win_arch}.exe')
             return
         system2('cargo build --locked --release --features ' + features)
         # system2('upx.exe target/release/rustdesk.exe')

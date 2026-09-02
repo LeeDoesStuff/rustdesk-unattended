@@ -79,7 +79,7 @@ pub fn core_main() -> Option<Vec<String>> {
         }
         i += 1;
     }
-    #[cfg(any(target_os = "linux", target_os = "windows"))]
+    #[cfg(all(any(target_os = "linux", target_os = "windows"), not(feature = "cli")))]
     if args.is_empty() {
         #[cfg(target_os = "linux")]
         let should_check_start_tray = crate::check_process("--server", false);
@@ -191,6 +191,9 @@ pub fn core_main() -> Option<Vec<String>> {
         return None;
     }
     if args.is_empty() || crate::common::is_empty_uni_link(&args[0]) {
+        #[cfg(feature = "cli")]
+        crate::cli::enable_incoming_service();
+
         #[cfg(target_os = "macos")]
         {
             crate::platform::macos::try_remove_temp_update_dir(None);

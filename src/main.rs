@@ -1,11 +1,22 @@
 #![cfg_attr(
-    all(not(debug_assertions), target_os = "windows"),
+    all(not(debug_assertions), target_os = "windows", not(feature = "cli")),
     windows_subsystem = "windows"
 )]
 
 use librustdesk::*;
 
-#[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]
+#[cfg(all(feature = "cli", feature = "flutter"))]
+compile_error!("the cli and flutter features cannot be enabled together");
+
+#[cfg(all(feature = "cli", not(any(target_os = "android", target_os = "ios"))))]
+fn main() {
+    cli::run();
+}
+
+#[cfg(all(
+    not(feature = "cli"),
+    any(target_os = "android", target_os = "ios", feature = "flutter")
+))]
 fn main() {
     if !common::global_init() {
         eprintln!("Global initialization failed.");
@@ -19,7 +30,8 @@ fn main() {
 #[cfg(not(any(
     target_os = "android",
     target_os = "ios",
-    feature = "flutter"
+    feature = "flutter",
+    feature = "cli"
 )))]
 fn main() {
     #[cfg(all(windows, not(feature = "inline")))]

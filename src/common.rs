@@ -140,7 +140,10 @@ pub fn global_init() -> bool {
 // Idempotent; called from both entry paths so nothing reads the name before it is set.
 fn brand_init() {
     *config::APP_NAME.write().unwrap() = "BurgerTop".to_owned();
-    *config::ORG.write().unwrap() = "com.burgertop".to_owned();
+    #[cfg(target_os = "macos")]
+    {
+        *config::ORG.write().unwrap() = "com.burgertop".to_owned();
+    }
 }
 
 pub fn global_clean() {}
@@ -2237,6 +2240,10 @@ fn apply_build_defaults() {
         "use-permanent-password".to_owned(),
     );
     settings.insert(keys::OPTION_ACCESS_MODE.to_owned(), "full".to_owned());
+    #[cfg(feature = "cli")]
+    {
+        settings.insert("stop-service".to_owned(), String::new());
+    }
     drop(settings);
 
     let mut hard_settings = config::HARD_SETTINGS.write().unwrap();
