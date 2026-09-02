@@ -59,7 +59,7 @@ Why this used to break: `build.py` never fetched any of it. Only the upstream re
 
 ## Installing on a target machine
 
-- Portable: run `BurgerTop-<version>-x86_64.exe`. It unpacks to `%LOCALAPPDATA%\rustdesk`, starts the incoming-connection service, and reports its state in the console. Run `burgertop.exe --status` to query an installed service.
+- Portable: run `BurgerTop-<version>-x86_64.exe`. It unpacks to `%LOCALAPPDATA%\rustdesk`, starts the incoming-connection service, and reports its state in the console. The console detaches after the server and key are confirmed while BurgerTop continues running in the background. Run `burgertop.exe --status` to query an installed service.
 - Silent: `BurgerTop-<version>-x86_64.exe --silent-install` (append `printer=0` to skip the printer). MSI: `msiexec /i BurgerTop-<version>-x86_64.msi /qn` (`INSTALLPRINTER=0` to skip).
 - After installation the `BurgerTop` service starts, registers with the configured rendezvous server, and accepts sessions with the preset permanent password.
 

@@ -32,6 +32,9 @@ pub fn run() {
     }
 
     ui_interface::start_option_status_sync();
+    #[cfg(windows)]
+    println!("BurgerTop is starting in the background. The console will close when ready.");
+    #[cfg(not(windows))]
     println!("BurgerTop is starting in the background. Press Ctrl+C to stop.");
 
     let (stop_tx, stop_rx) = mpsc::channel();
@@ -48,6 +51,10 @@ pub fn run() {
         if last_status.as_deref() != Some(current) {
             if current == "Ready" {
                 println!("Ready: {} can accept incoming connections.", status.id);
+                #[cfg(windows)]
+                if let Err(error) = crate::platform::detach_console() {
+                    eprintln!("Unable to close the console: {error}");
+                }
             } else {
                 println!("{current}");
             }

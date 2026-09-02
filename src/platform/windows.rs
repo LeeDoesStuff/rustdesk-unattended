@@ -128,6 +128,15 @@ const MSI_EXIT_SUCCESS_REBOOT_INITIATED: u32 = 1641;
 const MSI_EXIT_SUCCESS_REBOOT_REQUIRED: u32 = 3010;
 const HKLM_PREFIX: &str = "HKEY_LOCAL_MACHINE\\";
 
+pub fn detach_console() -> io::Result<()> {
+    io::stdout().flush()?;
+    if unsafe { winapi::um::wincon::FreeConsole() } == 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
 fn validate_install_app_name(app_name: &str) -> ResultType<()> {
     if app_name.is_empty()
         || !app_name
